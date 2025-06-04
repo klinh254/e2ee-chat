@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>E2EE Chat App</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">End-to-end encrypted chat</h1>
+        <div id="login">
+            <input id="usernameInput" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Enter your username" />
+            <div class="action-buttons">
+                <button id="createBtn" class="btn">Create new chat</button>
+                <button id="showJoinFormBtn" class="btn">Join chat</button>
+            </div>
+            <form id="joinForm" style="display:none;">
+                <input id="roomCodeInput" class="input" type="text" placeholder="Enter code to chat" maxlength="8" autocomplete="off" />
+                <button type="submit" class="btn">Join</button>
+            </form>
+        </div>
+        <div id="chat" style="display:none;">
+            <div id="roomInfo"></div>
+            <div id="users"></div>
+            <div id="messages"></div>
+            <form id="sendForm" autocomplete="off">
+                <input id="msgInput" type="text" class="input-message" placeholder="Enter message" autocomplete="off" />
+                <input id="imageInput" type="file" accept="image/*" style="display:none;" />
+                <button type="button" id="attachBtn" class="btn">🖼️</button>
+                <button type="submit" class="btn">Send</button>
+            </form>
+        </div>
+    </div>
+    <script src="socket.io.min.js"></script>
+    <script src="sodium.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
