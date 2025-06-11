@@ -7,15 +7,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Ensure sodium is loaded and ready
     async function ensureSodiumReady() {
-        // Wait for window.sodium to be defined (by CDN script)
         while (typeof window.sodium === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 20));
         }
-        // Wait for sodium.ready to resolve
         await window.sodium.ready;
     }
 
-    // Utility functions
     function randomRoomCode() {
         const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
         return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -78,6 +75,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('imageInput').onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        // Limit image size to 400KB for safety
+        if (file.size > 500 * 1024) {
+            alert("File too large! Maximum file size: 500KB.");
+            return;
+        }
         const reader = new FileReader();
         reader.onload = async (evt) => {
             const dataUrl = evt.target.result;
@@ -86,37 +89,53 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsDataURL(file);
     };
 
-    // Crypto and socket logic
     async function startChat() {
         myKeyPair = sodium.crypto_box_keypair();
         showChatUI();
 
         socket = io();
 
-        socket.emit('register', {
-            username,
-            publicKey: sodium.to_base64(myKeyPair.publicKey),
-            roomCode
+        function registerAndGetUsers() {
+            socket.emit('register', {
+                username,
+                publicKey: sodium.to_base64(myKeyPair.publicKey),
+                roomCode
+            });
+            socket.emit('get-users');
+        }
+
+        registerAndGetUsers();
+
+        socket.on('connect', () => {
+            // After reconnect, re-register and fetch users
+            registerAndGetUsers();
         });
 
         socket.on('users', (userList) => {
-            users = userList.filter(u => u.username !== username && u.roomCode === roomCode);
+            users = userList.filter(u => u.roomCode === roomCode);
             let html = '<b>Online:</b> ';
-            users.forEach(u => html += `${u.username} `);
+            users.forEach(u => {
+                if (u.username !== username) html += `${u.username} `;
+            });
             document.getElementById('users').innerHTML = html;
         });
 
-        socket.emit('get-users');
-
         socket.on('encrypted-message', async (data) => {
             const sender = data.from;
-            let senderObj = users.find(u => u.username === sender);
-            // Fallback for self-messages (x)
-            if (!senderObj && sender === username) {
-                senderObj = { publicKey: sodium.to_base64(myKeyPair.publicKey), username, roomCode };
+            let senderObj = users.find(u => u.username === sender && u.roomCode === roomCode);
+            if (!senderObj) {
+                if (sender === username) {
+                    senderObj = {
+                        publicKey: sodium.to_base64(myKeyPair.publicKey),
+                        username,
+                        roomCode
+                    };
+                } else {
+                    console.error("Sender not found in users array", sender, users);
+                    addMessage(`${sender}: [Error: Sender info missing]`, '');
+                    return;
+                }
             }
-            if (!senderObj) return;
-
             const senderPublicKey = sodium.from_base64(senderObj.publicKey);
             const sharedKey = sodium.crypto_box_beforenm(senderPublicKey, myKeyPair.privateKey);
 
@@ -127,10 +146,16 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const plain = sodium.crypto_box_open_easy_afternm(cipher, nonce, sharedKey);
                 if (data.type === 'image') {
-                    msg = `<img src="${sodium.to_string(plain)}" alt="image" />`;
+                    // The sender now sends JSON {header, base64}
+                    try {
+                        const info = JSON.parse(sodium.to_string(plain));
+                        msg = `<img src="${info.header}${info.base64}" alt="image" />`;
+                    } catch {
+                        msg = `<img src="${sodium.to_string(plain)}" alt="image" />`;
+                    }
                 } else {
                     msg = sodium.to_string(plain);
-              }
+                }
             } catch (e) {
                 msg = '[Decryption failed]';
             }
@@ -139,23 +164,63 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function sendMessageToAll(plain, type) {
-        for (const user of users) {
-            const theirPublicKey = sodium.from_base64(user.publicKey);
-            const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
+        if (type === 'image') {
+            // DataURL: data:image/png;base64,xxxx
+            const commaIdx = plain.indexOf(',');
+            if (commaIdx === -1) {
+                addMessage('You: [Invalid image data]', 'self');
+                return;
+            }
+            const header = plain.slice(0, commaIdx + 1); // include the comma
+            const base64 = plain.slice(commaIdx + 1);
+            const jsonString = JSON.stringify({ header, base64 });
+            for (const user of users) {
+                if (user.username === username) continue;
+                const theirPublicKey = sodium.from_base64(user.publicKey);
+                const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
 
-            const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
-            const plainBytes = sodium.from_string(plain);
-            const cipher = sodium.crypto_box_easy_afternm(plainBytes, nonce, sharedKey);
+                const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
+                const plainBytes = sodium.from_string(jsonString);
+                const cipher = sodium.crypto_box_easy_afternm(plainBytes, nonce, sharedKey);
 
-            const payload = sodium.to_base64(sodium.concat(nonce, cipher));
+                const fullCipher = new Uint8Array(nonce.length + cipher.length);
+                fullCipher.set(nonce, 0);
+                fullCipher.set(cipher, nonce.length);
+                const payload = sodium.to_base64(fullCipher);
 
-            socket.emit('encrypted-message', {
-                to: user.socketId,
-                from: username,
-                message: payload,
-                type
-            });
+                socket.emit('encrypted-message', {
+                    to: user.socketId,
+                    from: username,
+                    message: payload,
+                    type
+                });
+            }
+            // Show preview on sender side
+            addMessage(`You: <img src="${plain}" alt="image" />`, 'self');
+        } else {
+            // text message
+            for (const user of users) {
+                if (user.username === username) continue;
+                const theirPublicKey = sodium.from_base64(user.publicKey);
+                const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
+
+                const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
+                const plainBytes = sodium.from_string(plain);
+                const cipher = sodium.crypto_box_easy_afternm(plainBytes, nonce, sharedKey);
+
+                const fullCipher = new Uint8Array(nonce.length + cipher.length);
+                fullCipher.set(nonce, 0);
+                fullCipher.set(cipher, nonce.length);
+                const payload = sodium.to_base64(fullCipher);
+
+                socket.emit('encrypted-message', {
+                    to: user.socketId,
+                    from: username,
+                    message: payload,
+                    type
+                });
+            }
+            addMessage(`You: ${plain}`, 'self');
         }
-        addMessage(`You: ${type === 'image' ? '[image]' : plain}`, 'self');
     }
 });
