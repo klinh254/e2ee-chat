@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <div class="container">
-        <h1 class="header">End-to-end encrypted chat</h1>
+    <div class="container" id="landing-container">
+        <h1 class="header">End-to-end Encrypted Chat</h1>
         <div id="login">
             <input id="usernameInput" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Enter your username" />
             <div class="action-buttons">
@@ -20,20 +20,7 @@
                 <button type="submit" class="btn">Join</button>
             </form>
         </div>
-        <div id="chat" style="display:none;">
-            <div id="roomInfo"></div>
-            <div id="users"></div>
-            <div id="messages"></div>
-            <form id="sendForm" autocomplete="off">
-                <input id="msgInput" type="text" class="input-message" placeholder="Enter message" autocomplete="off" />
-                <input id="imageInput" type="file" accept="image/*" style="display:none;" />
-                <button type="button" id="attachBtn" class="btn">🖼️</button>
-                <button type="submit" class="btn">Send</button>
-            </form>
-        </div>
     </div>
-    <script src="socket.io.min.js"></script>
-    <script src="sodium.js"></script>
-    <script src="client.js"></script>
+    <script src="login.js"></script>
 </body>
 </html>

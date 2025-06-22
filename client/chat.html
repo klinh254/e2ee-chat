@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>E2EE Chat App</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div id="roomInfo"></div>
+            <button id="logoutBtn" class="btn btn-logout" title="Leave Room">⎋</button>
+        </div>
+        <div class="chat-users" id="users"></div>
+        <div class="chat-messages" id="messages"></div>
+        <form id="sendForm" autocomplete="off" class="chat-form">
+            <button type="button" id="attachBtn" class="btn btn-attach" title="Send Image">🖼️</button>
+            <input id="imageInput" type="file" accept="image/*" style="display:none;" />
+            <input id="msgInput" type="text" class="input-message" placeholder="Enter message..." autocomplete="off" />
+            <button type="submit" class="btn btn-send">Send</button>
+        </form>
+    </div>
+    <script src="socket.io.min.js"></script>
+    <script src="sodium.js"></script>
+    <script src="chat.js"></script>
+</body>
+</html>
