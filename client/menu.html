@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>E2EE Chat App</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="container" id="menu-container">
+        <button id="logoutBtn" class="btn btn-logout" style="float:right;">Logout</button>
+        <h3>Welcome, <span id="welcomeUser"></span>!</h3>
+        <div class="menu-section">
+            <h2>Your Rooms</h2>
+            <div id="userRooms"></div>
+        </div>
+        <div class="menu-section">
+            <button id="createRoomBtn" class="btn">Create New Room</button>
+        </div>
+        <div class="menu-section">
+            <h3>Join Room</h3>
+            <form id="joinRoomForm">
+                <input id="joinRoomCode" class="input" type="text" placeholder="Enter room code" maxlength="8" autocomplete="off" />
+                <button type="submit" class="btn">Join</button>
+            </form>
+        </div>
+    </div>
+    <script src="menu.js"></script>
+</body>
+</html>

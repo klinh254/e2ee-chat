@@ -9,18 +9,22 @@
 <body>
     <div class="container" id="landing-container">
         <h1 class="header">End-to-end Encrypted Chat</h1>
-        <div id="login">
-            <input id="usernameInput" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Enter your username" />
-            <div class="action-buttons">
-                <button id="createBtn" class="btn">Create new chat</button>
-                <button id="showJoinFormBtn" class="btn">Join chat</button>
+        <div style="display:flex; gap:3rem; justify-content:center;">
+            <div id="registerSection">
+                <h2>Register</h2>
+                <input id="registerUsername" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Username" />
+                <input id="registerPassword" class="input mb-2" type="password" autocomplete="off" placeholder="Password" />
+                <button id="registerBtn" class="btn mb-3">Register</button>
             </div>
-            <form id="joinForm" style="display:none;">
-                <input id="roomCodeInput" class="input" type="text" placeholder="Enter code to chat" maxlength="8" autocomplete="off" />
-                <button type="submit" class="btn">Join</button>
-            </form>
+            <div id="loginSection">
+                <h2>Login</h2>
+                <input id="loginUsername" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Username" />
+                <input id="loginPassword" class="input mb-2" type="password" autocomplete="off" placeholder="Password" />
+                <button id="loginBtn" class="btn">Login</button>
+            </div>
         </div>
     </div>
+    <script src="sodium.js"></script>
     <script src="login.js"></script>
 </body>
 </html>

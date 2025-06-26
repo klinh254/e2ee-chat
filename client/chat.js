@@ -15,20 +15,16 @@ function scrollMessages() {
 
 function addMessageBubble({ sender, text, isImage, isSelf }) {
     const messages = document.getElementById('messages');
-    // Create row
     const row = document.createElement('div');
     row.className = 'message-row' + (isSelf ? ' self' : '');
 
-    // Container for name and bubble
     const content = document.createElement('div');
     content.className = 'message-content';
 
-    // Meta (name)
     const meta = document.createElement('div');
     meta.className = 'message-meta';
     meta.textContent = isSelf ? 'You' : sender;
 
-    // Bubble
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
 
@@ -38,10 +34,8 @@ function addMessageBubble({ sender, text, isImage, isSelf }) {
         bubble.textContent = text;
     }
 
-    // Add meta above bubble
     content.appendChild(meta);
     content.appendChild(bubble);
-
     row.appendChild(content);
     messages.appendChild(row);
     scrollMessages();
@@ -56,7 +50,6 @@ function updateUsersList() {
     usersDiv.textContent = "Online: " + users.map(u => u.username).join(", ");
 }
 
-// Main logic
 async function ensureSodiumReady() {
     while (typeof window.sodium === 'undefined') {
         await new Promise(resolve => setTimeout(resolve, 20));
@@ -64,17 +57,14 @@ async function ensureSodiumReady() {
     await window.sodium.ready;
 }
 
-function logout() {
-    // Clean up session and go back to landing
-    sessionStorage.clear();
-    window.location.href = 'index.html';
+function leaveRoom() {
+    window.location.href = 'menu.html';
 }
 
-document.getElementById('logoutBtn').onclick = logout;
+document.getElementById('leaveRoomBtn').onclick = leaveRoom;
 
 window.onload = async function () {
-    // Restore username/roomCode
-    username = sessionStorage.getItem('username');
+    username = localStorage.getItem('username');
     roomCode = sessionStorage.getItem('roomCode');
     if (!username || !roomCode) {
         window.location.href = 'index.html';
@@ -86,73 +76,134 @@ window.onload = async function () {
 };
 
 async function startChat() {
-    myKeyPair = sodium.crypto_box_keypair();
-
-    socket = io();
-
-    function registerAndGetUsers() {
-        socket.emit('register', {
-            username,
-            publicKey: sodium.to_base64(myKeyPair.publicKey),
-            roomCode
-        });
-        socket.emit('get-users');
+    let privateKeyB64 = localStorage.getItem('privateKey');
+    let publicKeyB64 = localStorage.getItem('publicKey');
+    if (!privateKeyB64 || !publicKeyB64) {
+        const keyPair = sodium.crypto_box_keypair();
+        privateKeyB64 = sodium.to_base64(keyPair.privateKey);
+        publicKeyB64 = sodium.to_base64(keyPair.publicKey);
+        localStorage.setItem('privateKey', privateKeyB64);
+        localStorage.setItem('publicKey', publicKeyB64);
     }
+    myKeyPair = {
+        privateKey: sodium.from_base64(privateKeyB64),
+        publicKey: sodium.from_base64(publicKeyB64)
+    };
 
-    registerAndGetUsers();
+    const token = localStorage.getItem('token');
+    socket = io({
+        auth: { token }
+    });
 
     socket.on('connect', () => {
-        registerAndGetUsers();
+        socket.emit('join-room', { roomCode });
+    });
+
+    socket.on('connect_error', (err) => {
+        console.error('Socket.IO connection error:', err.message);
+        alert('Connection error: ' + err.message);
     });
 
     socket.on('users', (userList) => {
-        users = userList.filter(u => u.roomCode === roomCode);
+        users = userList.map(u => ({ ...u, roomCode }));
+        // Save for use on page reloads
+        localStorage.setItem('users', JSON.stringify(users));
         updateUsersList();
     });
 
-    socket.on('encrypted-message', async (data) => {
-        const sender = data.from;
-        let senderObj = users.find(u => u.username === sender && u.roomCode === roomCode);
-        if (!senderObj) {
-            if (sender === username) {
-                senderObj = {
-                    publicKey: sodium.to_base64(myKeyPair.publicKey),
-                    username,
-                    roomCode
-                };
-            } else {
-                addMessageBubble({ sender, text: "[Error: Sender info missing]", isSelf: false });
-                return;
+    socket.on('chat-history', async (messages) => {
+        document.getElementById('messages').innerHTML = '';
+        for (const m of messages) {
+            // Show messages sent to us OR sent by us
+            if (m.to === username) {
+                await handleIncomingEncryptedMessage(m, true);
+            } else if (m.from === username) {
+                // Show your own sent message as "You"
+                let plain = null;
+                try {
+                    // Get user list from memory or localStorage
+                    const usersList = users.length ? users : JSON.parse(localStorage.getItem('users') || '[]');
+                    const recipientObj = usersList.find(u => u.username === m.to);
+                    if (recipientObj) {
+                        const theirPublicKey = sodium.from_base64(recipientObj.publicKey);
+                        const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
+
+                        const fullCipher = sodium.from_base64(m.message);
+                        const nonce = fullCipher.slice(0, sodium.crypto_box_NONCEBYTES);
+                        const cipher = fullCipher.slice(sodium.crypto_box_NONCEBYTES);
+
+                        const plainBytes = sodium.crypto_box_open_easy_afternm(cipher, nonce, sharedKey);
+                        if (m.type === 'image') {
+                            try {
+                                const info = JSON.parse(sodium.to_string(plainBytes));
+                                plain = info.header + info.base64;
+                            } catch {
+                                plain = sodium.to_string(plainBytes);
+                            }
+                            addMessageBubble({ sender: 'You', text: plain, isImage: true, isSelf: true });
+                        } else {
+                            plain = sodium.to_string(plainBytes);
+                            addMessageBubble({ sender: 'You', text: plain, isImage: false, isSelf: true });
+                        }
+                    } else {
+                        addMessageBubble({ sender: 'You', text: "[Recipient's publicKey not found]", isImage: false, isSelf: true });
+                    }
+                } catch {
+                    addMessageBubble({ sender: 'You', text: "[Decryption failed]", isImage: false, isSelf: true });
+                }
             }
         }
-        const senderPublicKey = sodium.from_base64(senderObj.publicKey);
-        const sharedKey = sodium.crypto_box_beforenm(senderPublicKey, myKeyPair.privateKey);
+    });
 
-        const fullCipher = sodium.from_base64(data.message);
-        const nonce = fullCipher.slice(0, sodium.crypto_box_NONCEBYTES);
-        const cipher = fullCipher.slice(sodium.crypto_box_NONCEBYTES);
-        let msg;
-        try {
-            const plain = sodium.crypto_box_open_easy_afternm(cipher, nonce, sharedKey);
-            if (data.type === 'image') {
-                try {
-                    const info = JSON.parse(sodium.to_string(plain));
-                    msg = info.header + info.base64;
-                } catch {
-                    msg = sodium.to_string(plain);
-                }
-                addMessageBubble({ sender, text: msg, isImage: true, isSelf: sender === username });
-            } else {
-                msg = sodium.to_string(plain);
-                addMessageBubble({ sender, text: msg, isImage: false, isSelf: sender === username });
-            }
-        } catch (e) {
-            addMessageBubble({ sender, text: "[Decryption failed]", isImage: false, isSelf: sender === username });
+    socket.on('encrypted-message', async (data) => {
+        // Only process messages addressed to us
+        if (data.to === username) {
+            await handleIncomingEncryptedMessage(data, false);
         }
     });
 }
 
-// Message sending logic
+async function handleIncomingEncryptedMessage(data, isHistory) {
+    if (data.from === username) return;
+
+    const sender = data.from;
+    let senderObj = users.find(u => u.username === sender && u.roomCode === roomCode);
+    // fallback to user list from localStorage for history rendering after reload
+    if (!senderObj && !isHistory) {
+        const usersList = JSON.parse(localStorage.getItem('users') || '[]');
+        senderObj = usersList.find(u => u.username === sender && u.roomCode === roomCode);
+    }
+    if (!senderObj) {
+        addMessageBubble({ sender, text: "[Error: Sender info missing]", isImage: false, isSelf: false });
+        return;
+    }
+    const senderPublicKey = sodium.from_base64(senderObj.publicKey);
+    let isSelf = sender === username;
+    const sharedKey = sodium.crypto_box_beforenm(senderPublicKey, myKeyPair.privateKey);
+
+    const fullCipher = sodium.from_base64(data.message);
+    const nonce = fullCipher.slice(0, sodium.crypto_box_NONCEBYTES);
+    const cipher = fullCipher.slice(sodium.crypto_box_NONCEBYTES);
+    let msg;
+    try {
+        const plain = sodium.crypto_box_open_easy_afternm(cipher, nonce, sharedKey);
+        if (data.type === 'image') {
+            try {
+                const info = JSON.parse(sodium.to_string(plain));
+                msg = info.header + info.base64;
+            } catch {
+                msg = sodium.to_string(plain);
+            }
+            addMessageBubble({ sender, text: msg, isImage: true, isSelf });
+        } else {
+            msg = sodium.to_string(plain);
+            addMessageBubble({ sender, text: msg, isImage: false, isSelf });
+        }
+    } catch (e) {
+        addMessageBubble({ sender, text: "[Decryption failed]", isImage: false, isSelf });
+    }
+}
+
 document.getElementById('sendForm').onsubmit = async function (e) {
     e.preventDefault();
     const msgInput = document.getElementById('msgInput');
@@ -206,14 +257,15 @@ async function sendMessageToAll(plain, type) {
             fullCipher.set(cipher, nonce.length);
             const payload = sodium.to_base64(fullCipher);
 
+            // Send per recipient, with "to" field
             socket.emit('encrypted-message', {
-                to: user.socketId,
+                roomCode,
+                to: user.username,
                 from: username,
                 message: payload,
                 type
             });
         }
-        // Show preview on sender side
         addMessageBubble({ sender: 'You', text: plain, isImage: true, isSelf: true });
     } else {
         // text message
@@ -231,8 +283,10 @@ async function sendMessageToAll(plain, type) {
             fullCipher.set(cipher, nonce.length);
             const payload = sodium.to_base64(fullCipher);
 
+            // Send per recipient, with "to" field
             socket.emit('encrypted-message', {
-                to: user.socketId,
+                roomCode,
+                to: user.username,
                 from: username,
                 message: payload,
                 type
