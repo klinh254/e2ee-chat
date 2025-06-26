@@ -28,7 +28,12 @@ function addMessageBubble({ sender, text, isImage, isSelf }) {
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
 
-    if (isImage) {
+    // Only render <img> for valid data URLs, else render as text
+    if (
+        isImage &&
+        typeof text === "string" &&
+        text.startsWith("data:image/")
+    ) {
         bubble.innerHTML = `<img src="${escapeHTML(text)}" alt="image" />`;
     } else {
         bubble.textContent = text;
@@ -95,6 +100,14 @@ async function startChat() {
         auth: { token }
     });
 
+    // Always load users from localStorage if present
+    const usersFromLocal = localStorage.getItem(`users_${roomCode}`);
+    if (usersFromLocal) {
+        try {
+            users = JSON.parse(usersFromLocal) || [];
+        } catch {}
+    }
+
     socket.on('connect', () => {
         socket.emit('join-room', { roomCode });
     });
@@ -106,51 +119,64 @@ async function startChat() {
 
     socket.on('users', (userList) => {
         users = userList.map(u => ({ ...u, roomCode }));
-        // Save for use on page reloads
-        localStorage.setItem('users', JSON.stringify(users));
+        // Save for use on page reloads, per-room
+        localStorage.setItem(`users_${roomCode}`, JSON.stringify(users));
         updateUsersList();
     });
 
     socket.on('chat-history', async (messages) => {
+        // Always reload users list from latest stored (it should be up-to-date after 'users' event)
+        const usersLocal = localStorage.getItem(`users_${roomCode}`);
+        let usersList = [];
+        if (usersLocal) {
+            try {
+                usersList = JSON.parse(usersLocal) || [];
+            } catch {}
+        }
+        // fallback to memory if not present
+        if (!usersList.length && users.length) usersList = users;
+
         document.getElementById('messages').innerHTML = '';
+        const shownSelfMessages = new Set();
+
         for (const m of messages) {
-            // Show messages sent to us OR sent by us
-            if (m.to === username) {
-                await handleIncomingEncryptedMessage(m, true);
-            } else if (m.from === username) {
-                // Show your own sent message as "You"
-                let plain = null;
+            if (m.from === username) {
+                // Only show the first occurrence of each unique (content+type) for self
+                let decoded = "";
+                let isImg = m.type === "image";
                 try {
-                    // Get user list from memory or localStorage
-                    const usersList = users.length ? users : JSON.parse(localStorage.getItem('users') || '[]');
                     const recipientObj = usersList.find(u => u.username === m.to);
-                    if (recipientObj) {
+                    if (!recipientObj) {
+                        decoded = "[Recipient's publicKey not found]";
+                    } else {
                         const theirPublicKey = sodium.from_base64(recipientObj.publicKey);
                         const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
-
                         const fullCipher = sodium.from_base64(m.message);
                         const nonce = fullCipher.slice(0, sodium.crypto_box_NONCEBYTES);
                         const cipher = fullCipher.slice(sodium.crypto_box_NONCEBYTES);
-
                         const plainBytes = sodium.crypto_box_open_easy_afternm(cipher, nonce, sharedKey);
-                        if (m.type === 'image') {
+                        if (isImg) {
                             try {
                                 const info = JSON.parse(sodium.to_string(plainBytes));
-                                plain = info.header + info.base64;
+                                decoded = info.header + info.base64;
                             } catch {
-                                plain = sodium.to_string(plainBytes);
+                                decoded = sodium.to_string(plainBytes);
                             }
-                            addMessageBubble({ sender: 'You', text: plain, isImage: true, isSelf: true });
                         } else {
-                            plain = sodium.to_string(plainBytes);
-                            addMessageBubble({ sender: 'You', text: plain, isImage: false, isSelf: true });
+                            decoded = sodium.to_string(plainBytes);
                         }
-                    } else {
-                        addMessageBubble({ sender: 'You', text: "[Recipient's publicKey not found]", isImage: false, isSelf: true });
                     }
                 } catch {
-                    addMessageBubble({ sender: 'You', text: "[Decryption failed]", isImage: false, isSelf: true });
+                    decoded = "[Decryption failed]";
                 }
+                // Use a deduplication key: content+type
+                const key = `${decoded}::${m.type}`;
+                if (!shownSelfMessages.has(key)) {
+                    addMessageBubble({ sender: 'You', text: decoded, isImage: isImg, isSelf: true });
+                    shownSelfMessages.add(key);
+                }
+            } else if (m.to === username) {
+                await handleIncomingEncryptedMessage(m, true, usersList);
             }
         }
     });
@@ -158,20 +184,32 @@ async function startChat() {
     socket.on('encrypted-message', async (data) => {
         // Only process messages addressed to us
         if (data.to === username) {
-            await handleIncomingEncryptedMessage(data, false);
+            const usersList = getUsersListForRoom();
+            await handleIncomingEncryptedMessage(data, false, usersList);
         }
     });
 }
 
-async function handleIncomingEncryptedMessage(data, isHistory) {
+function getUsersListForRoom() {
+    const usersLocal = localStorage.getItem(`users_${roomCode}`);
+    let usersList = [];
+    if (usersLocal) {
+        try {
+            usersList = JSON.parse(usersLocal) || [];
+        } catch {}
+    }
+    if (!usersList.length && users.length) usersList = users;
+    return usersList;
+}
+
+async function handleIncomingEncryptedMessage(data, isHistory, usersListOverride) {
     if (data.from === username) return;
 
     const sender = data.from;
-    let senderObj = users.find(u => u.username === sender && u.roomCode === roomCode);
-    // fallback to user list from localStorage for history rendering after reload
+    let roomUsers = usersListOverride || getUsersListForRoom();
+    let senderObj = roomUsers.find(u => u.username === sender && u.roomCode === roomCode);
     if (!senderObj && !isHistory) {
-        const usersList = JSON.parse(localStorage.getItem('users') || '[]');
-        senderObj = usersList.find(u => u.username === sender && u.roomCode === roomCode);
+        senderObj = users.find(u => u.username === sender && u.roomCode === roomCode);
     }
     if (!senderObj) {
         addMessageBubble({ sender, text: "[Error: Sender info missing]", isImage: false, isSelf: false });
@@ -232,8 +270,12 @@ document.getElementById('imageInput').onchange = async (e) => {
     reader.readAsDataURL(file);
 };
 
+// Optimistically render your own message ONCE per send, not per recipient.
 async function sendMessageToAll(plain, type) {
-    if (!users) return;
+    const roomUsers = getUsersListForRoom();
+    if (!roomUsers) return;
+    let didRenderOptimistic = false;
+
     if (type === 'image') {
         const commaIdx = plain.indexOf(',');
         if (commaIdx === -1) {
@@ -243,7 +285,7 @@ async function sendMessageToAll(plain, type) {
         const header = plain.slice(0, commaIdx + 1);
         const base64 = plain.slice(commaIdx + 1);
         const jsonString = JSON.stringify({ header, base64 });
-        for (const user of users) {
+        for (const user of roomUsers) {
             if (user.username === username) continue;
             const theirPublicKey = sodium.from_base64(user.publicKey);
             const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
@@ -266,10 +308,14 @@ async function sendMessageToAll(plain, type) {
                 type
             });
         }
-        addMessageBubble({ sender: 'You', text: plain, isImage: true, isSelf: true });
+        // Optimistically add only ONCE
+        if (!didRenderOptimistic) {
+            addMessageBubble({ sender: 'You', text: plain, isImage: true, isSelf: true });
+            didRenderOptimistic = true;
+        }
     } else {
         // text message
-        for (const user of users) {
+        for (const user of roomUsers) {
             if (user.username === username) continue;
             const theirPublicKey = sodium.from_base64(user.publicKey);
             const sharedKey = sodium.crypto_box_beforenm(theirPublicKey, myKeyPair.privateKey);
@@ -292,6 +338,10 @@ async function sendMessageToAll(plain, type) {
                 type
             });
         }
-        addMessageBubble({ sender: 'You', text: plain, isImage: false, isSelf: true });
+        // Optimistically add only ONCE
+        if (!didRenderOptimistic) {
+            addMessageBubble({ sender: 'You', text: plain, isImage: false, isSelf: true });
+            didRenderOptimistic = true;
+        }
     }
 }
