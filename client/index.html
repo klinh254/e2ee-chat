@@ -8,19 +8,20 @@
 </head>
 <body>
     <div class="container" id="landing-container">
-        <h1 class="header">End-to-end Encrypted Chat</h1>
-        <div style="display:flex; gap:3rem; justify-content:center;">
-            <div id="registerSection">
-                <h2>Register</h2>
-                <input id="registerUsername" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Username" />
-                <input id="registerPassword" class="input mb-2" type="password" autocomplete="off" placeholder="Password" />
-                <button id="registerBtn" class="btn mb-3">Register</button>
-            </div>
-            <div id="loginSection">
-                <h2>Login</h2>
+        <div class="auth-section-outer">
+            <div id="loginSection" class="auth-section">
+                <h1 class="login-text">Login</h1>
                 <input id="loginUsername" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Username" />
                 <input id="loginPassword" class="input mb-2" type="password" autocomplete="off" placeholder="Password" />
-                <button id="loginBtn" class="btn">Login</button>
+                <div class="button-row">
+                    <button id="loginBtn" class="btn btn-front">Login</button>
+                    <button id="toggleRegisterBtn" class="btn btn-front" type="button">Register</button>
+                </div>
+            </div>
+            <div id="registerSection" class="auth-section">
+                <input id="registerUsername" class="input mb-2" type="text" maxlength="20" autocomplete="off" placeholder="Username" />
+                <input id="registerPassword" class="input mb-2" type="password" autocomplete="off" placeholder="Password" />
+                <button id="registerBtn" class="btn btn-front">Register</button>
             </div>
         </div>
     </div>

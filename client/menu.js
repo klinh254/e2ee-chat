@@ -24,10 +24,10 @@ async function fetchUserRooms(username, token) {
         const data = await res.json();
         const userRooms = document.getElementById('userRooms');
         if (data.rooms.length === 0) {
-            userRooms.innerHTML = '<i>You have not joined any rooms.</i>';
+            userRooms.innerHTML = '<t>You have not joined any rooms.</t>';
         } else {
             userRooms.innerHTML = data.rooms.map(code =>
-                `<button class="btn" onclick="joinRoom('${code}')">${code}</button>`
+                `<button class="btn-room" onclick="joinRoom('${code}')">${code}</button>`
             ).join(' ');
         }
     } else {

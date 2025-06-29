@@ -36,6 +36,8 @@ document.getElementById('registerBtn').onclick = async () => {
         localStorage.setItem('privateKey', privateKey);
         localStorage.setItem('publicKey', publicKey);
         localStorage.setItem('username', username);
+        // Optionally collapse register section after successful registration
+        document.getElementById('registerSection').classList.remove('expanded');
     } else {
         const err = await res.json();
         if (err.error && err.error.includes('duplicate')) {
@@ -86,9 +88,27 @@ document.getElementById('loginBtn').onclick = async () => {
     }
 };
 
+// Register section toggle
+const registerSection = document.getElementById('registerSection');
+const toggleRegisterBtn = document.getElementById('toggleRegisterBtn');
+let isRegisterExpanded = false;
+toggleRegisterBtn.onclick = () => {
+    isRegisterExpanded = !isRegisterExpanded;
+    if (isRegisterExpanded) {
+        registerSection.classList.add('expanded');
+        toggleRegisterBtn.textContent = "Cancel";
+    } else {
+        registerSection.classList.remove('expanded');
+        toggleRegisterBtn.textContent = "Register";
+    }
+};
+
 // Optional: If already logged in, redirect to menu
 window.onload = function() {
     if (localStorage.getItem('token') && localStorage.getItem('username') && localStorage.getItem('privateKey')) {
         window.location.href = 'menu.html';
     }
+    // Ensure register section is collapsed initially
+    registerSection.classList.remove('expanded');
+    toggleRegisterBtn.textContent = "Register";
 };
