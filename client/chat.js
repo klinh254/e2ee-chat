@@ -182,8 +182,24 @@ async function startChat() {
     });
 
     socket.on('encrypted-message', async (data) => {
-        // Only process messages addressed to us
+        console.log("Received message", data, "sentAt:", data.sentAt);
         if (data.to === username) {
+            if (data.sentAt) {
+                const latency = Date.now() - data.sentAt;
+                console.log(`[Latency] Message from ${data.from}: ${latency} ms`);
+                if (!window.latencyStats) window.latencyStats = [];
+                window.latencyStats.push({
+                    from: data.from,
+                    to: data.to,
+                    latency,
+                    sentAt: data.sentAt,
+                    receivedAt: Date.now(),
+                    type: data.type
+                });
+            } else {
+                // Diagnostic
+                console.warn("No sentAt in received message!", data);
+            }
             const usersList = getUsersListForRoom();
             await handleIncomingEncryptedMessage(data, false, usersList);
         }
@@ -299,13 +315,28 @@ async function sendMessageToAll(plain, type) {
             fullCipher.set(cipher, nonce.length);
             const payload = sodium.to_base64(fullCipher);
 
+            // --- Size logging ---
+            console.log(`[Size] Plain: ${jsonString.length} bytes, Encrypted: ${fullCipher.length} bytes`);
+            if (!window.sizeStats) window.sizeStats = [];
+            window.sizeStats.push({
+                to: user.username,
+                type: "image",
+                plainSize: plainBytes.length,
+                encryptedSize: fullCipher.length,
+                timestamp: Date.now(),
+                isImage: true
+            });
+            // ---------------------------
+
             // Send per recipient
+            const sentAt = Date.now();
             socket.emit('encrypted-message', {
                 roomCode,
                 to: user.username,
                 from: username,
                 message: payload,
-                type
+                type,
+                sentAt
             });
         }
         // Add only once
@@ -328,14 +359,29 @@ async function sendMessageToAll(plain, type) {
             fullCipher.set(nonce, 0);
             fullCipher.set(cipher, nonce.length);
             const payload = sodium.to_base64(fullCipher);
+            
+            // --- Size logging ---
+            console.log(`[Size] Plain: ${plainBytes.length} bytes, Encrypted: ${fullCipher.length} bytes`);
+            if (!window.sizeStats) window.sizeStats = [];
+            window.sizeStats.push({
+                to: user.username,
+                type: "text",
+                plainSize: plainBytes.length,
+                encryptedSize: fullCipher.length,
+                timestamp: Date.now(),
+                isImage: false
+            });
+            // ---------------------------
 
             // Send per recipient
+            const sentAt = Date.now();
             socket.emit('encrypted-message', {
                 roomCode,
                 to: user.username,
                 from: username,
                 message: payload,
-                type
+                type,
+                sentAt
             });
         }
         // Add only once
@@ -344,4 +390,26 @@ async function sendMessageToAll(plain, type) {
             didRenderOptimistic = true;
         }
     }
+}
+
+// Call this from browser console: exportLatencies()
+function exportLatencies() {
+    const stats = window.latencyStats || [];
+    console.table(stats); // view in browser console as a table
+    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: "application/json" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "latencies.json";
+    a.click();
+}
+
+// Call this from browser console: exportSizeStats()
+function exportSizeStats() {
+    const stats = window.sizeStats || [];
+    console.table(stats); // view in browser console as a table
+    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: "application/json" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "sizestats.json";
+    a.click();
 }
