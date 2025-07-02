@@ -1,5 +1,3 @@
-// Handles registration, login, and local keypair management for seamless UX
-
 function saveLocalCredentials({ username, token, publicKey, privateKey }) {
     localStorage.setItem('username', username);
     localStorage.setItem('token', token);
@@ -36,7 +34,7 @@ document.getElementById('registerBtn').onclick = async () => {
         localStorage.setItem('privateKey', privateKey);
         localStorage.setItem('publicKey', publicKey);
         localStorage.setItem('username', username);
-        // Optionally collapse register section after successful registration
+        // Collapse register section after successful registration
         document.getElementById('registerSection').classList.remove('expanded');
     } else {
         const err = await res.json();
@@ -103,7 +101,7 @@ toggleRegisterBtn.onclick = () => {
     }
 };
 
-// Optional: If already logged in, redirect to menu
+// If already logged in, redirect to menu
 window.onload = function() {
     if (localStorage.getItem('token') && localStorage.getItem('username') && localStorage.getItem('privateKey')) {
         window.location.href = 'menu.html';

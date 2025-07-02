@@ -52,7 +52,7 @@ function updateUsersList() {
         usersDiv.textContent = "You are alone in this room.";
         return;
     }
-    usersDiv.textContent = "Online: " + users.map(u => u.username).join(", ");
+    usersDiv.textContent = "Room members: " + users.map(u => u.username).join(", ");
 }
 
 async function ensureSodiumReady() {
@@ -270,7 +270,7 @@ document.getElementById('imageInput').onchange = async (e) => {
     reader.readAsDataURL(file);
 };
 
-// Optimistically render your own message ONCE per send, not per recipient.
+// Render your own message once per send
 async function sendMessageToAll(plain, type) {
     const roomUsers = getUsersListForRoom();
     if (!roomUsers) return;
@@ -299,7 +299,7 @@ async function sendMessageToAll(plain, type) {
             fullCipher.set(cipher, nonce.length);
             const payload = sodium.to_base64(fullCipher);
 
-            // Send per recipient, with "to" field
+            // Send per recipient
             socket.emit('encrypted-message', {
                 roomCode,
                 to: user.username,
@@ -308,7 +308,7 @@ async function sendMessageToAll(plain, type) {
                 type
             });
         }
-        // Optimistically add only ONCE
+        // Add only once
         if (!didRenderOptimistic) {
             addMessageBubble({ sender: 'You', text: plain, isImage: true, isSelf: true });
             didRenderOptimistic = true;
@@ -329,7 +329,7 @@ async function sendMessageToAll(plain, type) {
             fullCipher.set(cipher, nonce.length);
             const payload = sodium.to_base64(fullCipher);
 
-            // Send per recipient, with "to" field
+            // Send per recipient
             socket.emit('encrypted-message', {
                 roomCode,
                 to: user.username,
@@ -338,7 +338,7 @@ async function sendMessageToAll(plain, type) {
                 type
             });
         }
-        // Optimistically add only ONCE
+        // Add only once
         if (!didRenderOptimistic) {
             addMessageBubble({ sender: 'You', text: plain, isImage: false, isSelf: true });
             didRenderOptimistic = true;
