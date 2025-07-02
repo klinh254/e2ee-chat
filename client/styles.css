@@ -1,6 +1,5 @@
 body {
-    background: #181b20;
-    color: #fff;
+    background: #f4f4f4;
     font-family: 'Segoe UI', Arial, sans-serif;
     margin: 0;
     min-height: 100vh;
@@ -22,7 +21,7 @@ body {
 }
 
 .container {
-    background: #25272c;
+    background: #fff;
     padding: 2.5rem 3rem 2rem 3rem;
     border-radius: 16px;
     box-shadow: 0 2px 16px 2px #0007;
@@ -34,7 +33,7 @@ body {
 }
 
 .container-menu {
-    background: #25272c;
+    background: #fff;
     padding: 2.5rem 3rem 2rem 3rem;
     border-radius: 16px;
     box-shadow: 0 2px 16px 2px #0007;
@@ -49,48 +48,41 @@ body {
     width: 100%;
     padding: 0.7rem 1rem;
     font-size: 1rem;
-    border: none;
-    border-radius: 8px;
-    background: #20242a;
-    color: #fff;
+    border-radius: 5px;
+    border-width: 1px;
     margin-bottom: 0.1rem;
     box-sizing: border-box;
-    outline: none;
     transition: background 0.2s, box-shadow 0.2s;
     text-align: center;
 }
 
 .input:focus {
-    background: #24272b;
+    /* background: #f5f5f5; */
     border: none;
     box-shadow: 0 0 0 2px #bebebe;
 }
 
 .input::placeholder {
-    color: #bdbdbd;
+    color: #818181;
     opacity: 1;
-    text-align: center;
+    text-align: left;
 }
 
 .input-code {
     width: 300px;
     padding: 0.7rem 1rem;
     font-size: 1rem;
-    border: none;
     border-radius: 8px;
-    background: #20242a;
-    color: #fff;
+    border-width: 1px;
     margin-bottom: 0.1rem;
     box-sizing: border-box;
-    outline: none;
     transition: background 0.2s;
     text-align: center;
 }
 
 .input-code:focus {
-    background: #24272b;
     border-color: #bebebe;
-    box-shadow: 0 0 0 2px #808080; 
+    box-shadow: 0 0 0 1px #808080; 
 }
 
 .input-code::placeholder {
@@ -103,10 +95,8 @@ body {
     flex: 1 1 auto;
     padding: 0.7rem 1rem;
     font-size: 1rem;
-    border: none;
     border-radius: 8px;
-    background: #20242a;
-    color: #fff;
+    border-width: 1px;
     margin-bottom: 0.1rem;
     box-sizing: border-box;
     outline: none;
@@ -114,13 +104,11 @@ body {
 }
 
 .input-message:focus {
-    background: #24272b;
     border-color: #bebebe;
-    box-shadow: 0 0 0 2px #808080; 
+    box-shadow: 0 0 0 1px #808080; 
 }
 
 .input-message::placeholder {
-    color: #bdbdbd;
     opacity: 1;
 }
 
@@ -137,7 +125,7 @@ body {
 }
 
 .btn {
-    background: #dc004e;
+    background: #2596be;
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -148,18 +136,13 @@ body {
     font-weight: 500;
 }
 
-.btn-front {
-    /* For login/register: width is controlled below */
-}
-
 .btn:hover,
 .btn:focus {
-    background: #9a0036;
+    background: #2080a3;
 }
 
 .btn-room{
-    background: #444b53;
-    color: #fff;
+    background: #dcdcdc;
     border: none;
     border-radius: 8px;
     padding: 0.65rem 1.4rem;
@@ -168,38 +151,39 @@ body {
     transition: background 0.15s;
     font-weight: 500;
     margin-bottom: 0.3rem;
-    width: 109px;
+    width: 104px;
 }
 
 .btn-room:hover {
-    background: #2d3137;
+    background: #d2d2d2;
 }
 
 .btn-logout {
-    background: #444b53;
+    background: #dcdcdc;
     margin-left: auto;
     padding: 0.5rem 1rem;
+    color: #000000;
 }
 .btn-logout:hover {
-    background: #2d3137;
+    background: #d2d2d2;
 }
 .btn-attach {
-    background: #25272c;
-    color: #fff;
+    background: #dcdcdc;
     font-size: 1.35rem;
     padding: 0.6rem 0.85rem;
     border: 1px solid #444;
+    border: none;
 }
 .btn-attach:hover {
-    background: #373a41;
+    background: #d2d2d2;
 }
 .btn-send {
-    background: #dc004e;
+    background: #2596be;
     padding: 0.7rem 1.3rem;
 }
 
 .chat-container {
-    background: #23242a;
+    background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 2px 16px 2px #0007;
     display: flex;
@@ -218,7 +202,7 @@ body {
     border-bottom: 1px solid #33363c;
     display: flex;
     align-items: center;
-    background: #2b2e35;
+    background: #ffffff;
     font-size: 1.07rem;
     font-weight: bold;
     justify-content: space-between;
@@ -229,15 +213,13 @@ body {
 .chat-users {
     padding: 0.6rem 1.4rem;
     font-size: 0.97rem;
-    color: #bdbdbd;
+    color: #000000;
     border-bottom: 1px solid #33363c;
-    background: #262a2f;
     min-height: 28px;
 }
 .chat-messages {
     flex: 1 1 auto;
     padding: 1.1rem 0.9rem 0.7rem 0.9rem;
-    background: #212225;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -264,7 +246,7 @@ body {
 
 .message-meta {
     font-size: 0.85rem;
-    color: #bdbdbd;
+    color: #65687f;
     margin: 0 0 0.13rem 0;
     min-width: 40px;
     text-align: left;
@@ -281,16 +263,14 @@ body {
     padding: 0.7rem 1.1rem;
     border-radius: 18px;
     font-size: 1.06rem;
-    color: #fff;
-    background: #dc004e;
+    background: #f0f0f0;
     margin-bottom: 0.1rem;
     word-break: break-word;
     box-shadow: 0 1px 4px #0004;
     position: relative;
 }
 .message-row.self .message-bubble {
-    background: #373a41;
-    color: #fff;
+    background: #d4e7ff;
 }
 
 .message-bubble img {
@@ -305,19 +285,16 @@ body {
     gap: 0.5rem;
     align-items: center;
     padding: 1rem 1.4rem;
-    background: #2b2e35;
     border-top: 1px solid #33363c;
 }
 ::-webkit-scrollbar {
     width: 8px;
-    background: #19191b;
 }
 ::-webkit-scrollbar-thumb {
-    background: #303339;
+    background: #8a8a8a;
     border-radius: 4px;
 }
 
-/* ===== LOGIN/REGISTER PAGE SECTION FIXES ===== */
 .auth-section-outer {
     display: flex;
     flex-direction: column;
@@ -325,8 +302,8 @@ body {
     align-items: center;
 }
 .auth-section {
-    width: 400px; /* slightly smaller to allow for padding */
-    padding: 0 10px; /* add horizontal padding for focus outline */
+    width: 400px; 
+    padding: 0 10px; 
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -347,15 +324,14 @@ body {
     transition: max-height 0.4s cubic-bezier(.6,.1,.4,1), opacity 0.25s 0.05s, padding 0.3s;
     opacity: 0;
     pointer-events: none;
-    padding: 0 10px; /* match .auth-section padding for focus ring */
+    padding: 0 10px; 
 }
 #registerSection.expanded {
     max-height: 320px;
     opacity: 1;
     pointer-events: all;
-    padding: 1rem 10px 0.5rem 10px; /* maintain horizontal padding when expanded */
+    padding: 1rem 10px 0.5rem 10px; 
 }
-/* Register section's Register button is always full width */
 #registerSection .btn {
     width: 100%;
 }
