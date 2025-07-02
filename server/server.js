@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
 
   // Relay and store encrypted message
   socket.on('encrypted-message', async (data) => {
-    const { roomCode, message, type, to } = data;
+    const { roomCode, message, type, to, sentAt } = data;
     const room = await Room.findOne({ code: roomCode });
     if (!room) return;
     // Save the message
@@ -172,7 +172,8 @@ io.on('connection', (socket) => {
           to,
           message,
           type,
-          timestamp: msg.timestamp
+          timestamp: msg.timestamp,
+          sentAt
         });
       }
     }
@@ -190,6 +191,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running at port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running at http://0.0.0.0:${PORT}`);
 });
